@@ -122,6 +122,8 @@ class AuthApiService {
       case 'INVALID_PASSWORD':
       case 'INVALID_LOGIN_CREDENTIALS':
         return 'Email or password is incorrect. Please try again.';
+      case 'USER_DISABLED':
+        return 'This account has been disabled in Firebase Auth.';
       case 'INVALID_EMAIL':
         return 'Invalid email address.';
       case 'WEAK_PASSWORD : Password should be at least 6 characters':

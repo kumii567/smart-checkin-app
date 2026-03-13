@@ -42,21 +42,46 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (kIsWeb) {
-        final result = await AuthApiService.instance.signIn(
-          email: email,
-          password: password,
-        );
-        await AuthSessionService.instance.saveSession(
-          email: result.email,
-          displayName: result.displayName,
-        );
+        try {
+          final result = await AuthApiService.instance.signIn(
+            email: email,
+            password: password,
+          );
+          await AuthSessionService.instance.saveSession(
+            email: result.email,
+            displayName: result.displayName,
+          );
 
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-          (_) => false,
-        );
-        return;
+          if (!mounted) return;
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            (_) => false,
+          );
+          return;
+        } catch (_) {
+          // Compatibility fallback: older accounts or environments may fail
+          // through REST but still work through FirebaseAuth SDK.
+          try {
+            await FirebaseAuth.instance.signInWithEmailAndPassword(
+              email: email,
+              password: password,
+            );
+            final user = FirebaseAuth.instance.currentUser;
+            await AuthSessionService.instance.saveSession(
+              email: user?.email ?? email,
+              displayName: user?.displayName,
+            );
+
+            if (!mounted) return;
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (_) => false,
+            );
+            return;
+          } catch (_) {
+            rethrow;
+          }
+        }
       }
 
       await FirebaseAuth.instance.signInWithEmailAndPassword(
