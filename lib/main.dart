@@ -6,14 +6,30 @@ import 'package:smart_class_checkin/services/auth_session_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await AuthSessionService.instance.loadSession();
+  String? startupError;
 
-  runApp(const SmartClassApp());
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    startupError = 'Failed to initialize Firebase. Please refresh the page.';
+    debugPrint('Firebase init error: $e');
+  }
+
+  try {
+    await AuthSessionService.instance.loadSession();
+  } catch (e) {
+    debugPrint('Session load error: $e');
+  }
+
+  runApp(SmartClassApp(startupError: startupError));
 }
 
 class SmartClassApp extends StatelessWidget {
-  const SmartClassApp({super.key});
+  const SmartClassApp({super.key, this.startupError});
+
+  final String? startupError;
 
   // Teal Harmony palette
   static const primaryTeal = Color(0xFF0D9488);
@@ -87,7 +103,52 @@ class SmartClassApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthGate(),
+      home: startupError == null
+          ? const AuthGate()
+          : _StartupErrorScreen(message: startupError!),
+    );
+  }
+}
+
+class _StartupErrorScreen extends StatelessWidget {
+  const _StartupErrorScreen({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 48,
+                color: Color(0xFFEF4444),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Startup Error',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Color(0xFF6B7280)),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Try a hard refresh: Ctrl + Shift + R',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
