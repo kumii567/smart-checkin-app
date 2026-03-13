@@ -37,58 +37,43 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-    } on FirebaseAuthException catch (error) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_messageForError(error))));
-    } on PlatformException catch (e) {
-      if (!mounted) return;
-      final code = e.code;
-      final msg = e.message ?? '';
+
+      // Check if login actually succeeded despite the error (Pigeon web bug)
+      if (FirebaseAuth.instance.currentUser != null) return;
+
+      String msg = e.toString();
       String friendlyMsg;
-      if (code == 'user-not-found' || msg.contains('user-not-found')) {
-        friendlyMsg = 'Account not found. Please sign up first.';
-      } else if (code == 'wrong-password' || msg.contains('wrong-password')) {
-        friendlyMsg = 'Incorrect password. Please try again.';
-      } else if (code == 'invalid-credential' ||
+      if (msg.contains('user-not-found') ||
           msg.contains('invalid-credential')) {
-        friendlyMsg = 'Invalid credentials. Please try again.';
-      } else if (code == 'network-request-failed' || msg.contains('network')) {
+        friendlyMsg = 'Account not found. Please sign up first.';
+      } else if (msg.contains('wrong-password')) {
+        friendlyMsg = 'Incorrect password. Please try again.';
+      } else if (msg.contains('invalid-email')) {
+        friendlyMsg = 'Invalid email format.';
+      } else if (msg.contains('network')) {
         friendlyMsg = 'Network issue. Please check your connection.';
+      } else if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'user-not-found':
+          case 'invalid-credential':
+            friendlyMsg = 'Account not found. Please sign up first.';
+            break;
+          case 'wrong-password':
+            friendlyMsg = 'Incorrect password. Please try again.';
+            break;
+          default:
+            friendlyMsg = 'Login failed. Please try again.';
+        }
       } else {
         friendlyMsg = 'Login failed. Please try again.';
       }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(friendlyMsg)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed. Please try again.')),
-      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  String _messageForError(FirebaseAuthException error) {
-    switch (error.code) {
-      case 'user-not-found':
-      case 'invalid-credential':
-        return 'Account not found. Please sign up first.';
-      case 'wrong-password':
-        return 'Incorrect password. Please try again.';
-      case 'invalid-email':
-        return 'Invalid email format.';
-      case 'operation-not-allowed':
-        return 'Email/Password sign-in is disabled in Firebase settings.';
-      case 'app-not-authorized':
-        return 'This web domain is not authorized in Firebase settings.';
-      case 'network-request-failed':
-        return 'Network issue. Please check your connection.';
-      default:
-        return 'Login failed: ${error.message ?? 'Unknown error'}';
     }
   }
 

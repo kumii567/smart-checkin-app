@@ -37,6 +37,7 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
     try {
+      // Use signInWithEmailAndPassword REST approach via firebase_auth
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
@@ -50,58 +51,57 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
       Navigator.of(context).pop();
-    } on FirebaseAuthException catch (error) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_messageForError(error))));
-    } on PlatformException catch (e) {
-      if (!mounted) return;
-      // firebase_auth 6.x Pigeon web bug — extract real code from details
-      final code = e.code;
-      final msg = e.message ?? '';
+
+      // Check if user was actually created despite the error (Pigeon web bug)
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await currentUser.updateDisplayName(_nameController.text.trim());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created! You are now logged in.'),
+          ),
+        );
+        Navigator.of(context).pop();
+        return;
+      }
+
+      // Parse the error
+      String msg = e.toString();
       String friendlyMsg;
-      if (code == 'email-already-in-use' ||
-          msg.contains('email-already-in-use')) {
+      if (msg.contains('email-already-in-use')) {
         friendlyMsg = 'This email is already registered.';
-      } else if (code == 'weak-password' || msg.contains('weak-password')) {
+      } else if (msg.contains('weak-password')) {
         friendlyMsg = 'Password is too weak. Use at least 6 characters.';
-      } else if (code == 'invalid-email' || msg.contains('invalid-email')) {
+      } else if (msg.contains('invalid-email')) {
         friendlyMsg = 'Invalid email format.';
-      } else if (code == 'network-request-failed' || msg.contains('network')) {
+      } else if (msg.contains('operation-not-allowed')) {
+        friendlyMsg = 'Email/Password sign-up is currently disabled.';
+      } else if (msg.contains('network')) {
         friendlyMsg = 'Network issue. Please check your connection.';
+      } else if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'email-already-in-use':
+            friendlyMsg = 'This email is already registered.';
+            break;
+          case 'weak-password':
+            friendlyMsg = 'Password is too weak. Use at least 6 characters.';
+            break;
+          case 'invalid-email':
+            friendlyMsg = 'Invalid email format.';
+            break;
+          default:
+            friendlyMsg = 'Sign-up failed. Please try again.';
+        }
       } else {
         friendlyMsg = 'Sign-up failed. Please try again.';
       }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(friendlyMsg)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign-up failed. Please try again.')),
-      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  String _messageForError(FirebaseAuthException error) {
-    switch (error.code) {
-      case 'email-already-in-use':
-        return 'This email is already registered.';
-      case 'invalid-email':
-        return 'Invalid email format.';
-      case 'weak-password':
-        return 'Password is too weak. Use at least 6 characters.';
-      case 'operation-not-allowed':
-        return 'Email/Password sign-up is disabled in Firebase settings.';
-      case 'app-not-authorized':
-        return 'This web domain is not authorized in Firebase settings.';
-      case 'network-request-failed':
-        return 'Network issue. Please check your connection.';
-      default:
-        return 'Sign-up failed: ${error.message ?? 'Unknown error'}';
     }
   }
 
