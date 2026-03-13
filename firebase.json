@@ -1,0 +1,39 @@
+{
+	"flutter": {
+		"platforms": {
+			"android": {
+				"default": {
+					"projectId": "smart-checkin-app",
+					"appId": "1:262638555811:android:92da78a193ea9892066516",
+					"fileOutput": "android/app/google-services.json"
+				}
+			},
+			"dart": {
+				"lib/firebase_options.dart": {
+					"projectId": "smart-checkin-app",
+					"configurations": {
+						"android": "1:262638555811:android:92da78a193ea9892066516",
+						"web": "1:262638555811:web:1f827e9cd2fa51f6066516"
+					}
+				}
+			}
+		}
+	},
+	"firestore": {
+		"rules": "firestore.rules"
+	},
+	"hosting": {
+		"public": "build/web",
+		"ignore": [
+			"firebase.json",
+			"**/.*",
+			"**/node_modules/**"
+		],
+		"rewrites": [
+			{
+				"source": "**",
+				"destination": "/index.html"
+			}
+		]
+	}
+}
