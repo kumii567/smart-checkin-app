@@ -37,87 +37,62 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    final name = _nameController.text.trim();
+
     try {
-      // Use signInWithEmailAndPassword REST approach via firebase_auth
       final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-      await credential.user?.updateDisplayName(_nameController.text.trim());
+          .createUserWithEmailAndPassword(email: email, password: password);
+      await credential.user?.updateDisplayName(name);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account created! You are now logged in.'),
-        ),
+        const SnackBar(content: Text('Account created! Welcome!')),
       );
       Navigator.of(context).pop();
-    } catch (e, stack) {
-      // Log full error to browser console so we can diagnose the real issue
-      developer.log('SIGNUP ERROR type: ${e.runtimeType}', name: 'Auth');
-      developer.log('SIGNUP ERROR: $e', name: 'Auth');
-      developer.log('SIGNUP STACK: $stack', name: 'Auth');
-      if (e is FirebaseAuthException) {
-        developer.log('FirebaseAuthException code: ${e.code}', name: 'Auth');
-        developer.log(
-          'FirebaseAuthException message: ${e.message}',
-          name: 'Auth',
-        );
-      }
-      if (e is PlatformException) {
-        developer.log('PlatformException code: ${e.code}', name: 'Auth');
-        developer.log('PlatformException message: ${e.message}', name: 'Auth');
-        developer.log('PlatformException details: ${e.details}', name: 'Auth');
-      }
-
-      if (!mounted) return;
-
-      // Check if user was actually created despite the error (Pigeon web bug)
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        await currentUser.updateDisplayName(_nameController.text.trim());
+    } catch (createError) {
+      // Pigeon web bug: creation may have succeeded even though an error is thrown.
+      // Try signing in — if create worked, this will succeed.
+      try {
+        final credential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+        await credential.user?.updateDisplayName(name);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created! You are now logged in.'),
-          ),
+          const SnackBar(content: Text('Account created! Welcome!')),
         );
         Navigator.of(context).pop();
-        return;
-      }
-
-      // Parse the error
-      String msg = e.toString();
-      String friendlyMsg;
-      if (msg.contains('email-already-in-use')) {
-        friendlyMsg = 'This email is already registered.';
-      } else if (msg.contains('weak-password')) {
-        friendlyMsg = 'Password is too weak. Use at least 6 characters.';
-      } else if (msg.contains('invalid-email')) {
-        friendlyMsg = 'Invalid email format.';
-      } else if (msg.contains('operation-not-allowed')) {
-        friendlyMsg = 'Email/Password sign-up is currently disabled.';
-      } else if (msg.contains('network')) {
-        friendlyMsg = 'Network issue. Please check your connection.';
-      } else if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'email-already-in-use':
-            friendlyMsg = 'This email is already registered.';
-            break;
-          case 'weak-password':
-            friendlyMsg = 'Password is too weak. Use at least 6 characters.';
-            break;
-          case 'invalid-email':
-            friendlyMsg = 'Invalid email format.';
-            break;
-          default:
-            friendlyMsg = 'Sign-up failed. Please try again. (${e.code})';
+      } catch (signInError) {
+        if (!mounted) return;
+        // Check if we're silently signed in despite errors
+        if (FirebaseAuth.instance.currentUser != null) {
+          await FirebaseAuth.instance.currentUser?.updateDisplayName(name);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Account created! Welcome!')),
+          );
+          Navigator.of(context).pop();
+          return;
         }
-      } else {
-        friendlyMsg = 'Sign-up failed. Please try again.';
+        // Real error — show friendly message
+        final msg = createError.toString() + signInError.toString();
+        String friendly;
+        if (msg.contains('email-already-in-use')) {
+          friendly =
+              'This email is already registered. Try logging in instead.';
+        } else if (msg.contains('weak-password')) {
+          friendly = 'Password too weak. Use at least 6 characters.';
+        } else if (msg.contains('invalid-email')) {
+          friendly = 'Invalid email address.';
+        } else if (msg.contains('network')) {
+          friendly = 'Network error. Check your connection.';
+        } else {
+          friendly = 'Sign-up failed. Please try again.';
+        }
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendly)));
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(friendlyMsg)));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

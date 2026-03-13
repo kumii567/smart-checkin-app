@@ -32,46 +32,47 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+        email: email,
+        password: password,
       );
+      // Success — AuthGate will handle navigation
     } catch (e) {
       if (!mounted) return;
 
-      // Check if login actually succeeded despite the error (Pigeon web bug)
+      // Pigeon web bug: sign-in may have succeeded even though an error is thrown.
       if (FirebaseAuth.instance.currentUser != null) return;
 
-      String msg = e.toString();
-      String friendlyMsg;
+      // Wait briefly for auth state to propagate (Pigeon timing issue)
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      if (FirebaseAuth.instance.currentUser != null) return;
+
+      final msg = e.toString();
+      String friendly;
       if (msg.contains('user-not-found') ||
-          msg.contains('invalid-credential')) {
-        friendlyMsg = 'Account not found. Please sign up first.';
+          msg.contains('invalid-credential') ||
+          msg.contains('INVALID_LOGIN_CREDENTIALS')) {
+        friendly = 'Email or password is incorrect. Please try again.';
       } else if (msg.contains('wrong-password')) {
-        friendlyMsg = 'Incorrect password. Please try again.';
+        friendly = 'Incorrect password. Please try again.';
       } else if (msg.contains('invalid-email')) {
-        friendlyMsg = 'Invalid email format.';
+        friendly = 'Invalid email address.';
+      } else if (msg.contains('too-many-requests')) {
+        friendly = 'Too many attempts. Please wait and try again.';
       } else if (msg.contains('network')) {
-        friendlyMsg = 'Network issue. Please check your connection.';
-      } else if (e is FirebaseAuthException) {
-        switch (e.code) {
-          case 'user-not-found':
-          case 'invalid-credential':
-            friendlyMsg = 'Account not found. Please sign up first.';
-            break;
-          case 'wrong-password':
-            friendlyMsg = 'Incorrect password. Please try again.';
-            break;
-          default:
-            friendlyMsg = 'Login failed. Please try again.';
-        }
+        friendly = 'Network error. Check your connection.';
       } else {
-        friendlyMsg = 'Login failed. Please try again.';
+        friendly = 'Login failed. Please try again.';
       }
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(friendlyMsg)));
+      ).showSnackBar(SnackBar(content: Text(friendly)));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
