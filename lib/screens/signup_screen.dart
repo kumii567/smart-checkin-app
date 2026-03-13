@@ -1,4 +1,5 @@
-﻿import 'dart:ui';
+﻿import 'dart:developer' as developer;
+import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,24 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       );
       Navigator.of(context).pop();
-    } catch (e) {
+    } catch (e, stack) {
+      // Log full error to browser console so we can diagnose the real issue
+      developer.log('SIGNUP ERROR type: ${e.runtimeType}', name: 'Auth');
+      developer.log('SIGNUP ERROR: $e', name: 'Auth');
+      developer.log('SIGNUP STACK: $stack', name: 'Auth');
+      if (e is FirebaseAuthException) {
+        developer.log('FirebaseAuthException code: ${e.code}', name: 'Auth');
+        developer.log(
+          'FirebaseAuthException message: ${e.message}',
+          name: 'Auth',
+        );
+      }
+      if (e is PlatformException) {
+        developer.log('PlatformException code: ${e.code}', name: 'Auth');
+        developer.log('PlatformException message: ${e.message}', name: 'Auth');
+        developer.log('PlatformException details: ${e.details}', name: 'Auth');
+      }
+
       if (!mounted) return;
 
       // Check if user was actually created despite the error (Pigeon web bug)
@@ -92,7 +110,7 @@ class _SignupScreenState extends State<SignupScreen> {
             friendlyMsg = 'Invalid email format.';
             break;
           default:
-            friendlyMsg = 'Sign-up failed. Please try again.';
+            friendlyMsg = 'Sign-up failed. Please try again. (${e.code})';
         }
       } else {
         friendlyMsg = 'Sign-up failed. Please try again.';
