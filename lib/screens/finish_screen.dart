@@ -163,20 +163,11 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
       'created_at': now.toIso8601String(),
     };
 
+    var savedLocally = true;
     try {
-      // Save finish-class data locally in SQLite for MVP persistence.
       await DbService.instance.insertRecord(record);
     } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save finish-class data.')),
-      );
-      return;
+      savedLocally = false;
     }
 
     var syncedToCloud = true;
@@ -192,12 +183,21 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
       _isSaving = false;
     });
 
+    if (!savedLocally && !syncedToCloud) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save finish-class data.')),
+      );
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          syncedToCloud
+          savedLocally && syncedToCloud
               ? 'Finish class saved locally and synced to Firebase.'
-              : 'Finish class saved locally. Firebase sync is pending.',
+              : savedLocally
+              ? 'Finish class saved locally. Firebase sync is pending.'
+              : 'Finish class saved to Firebase (cloud only).',
         ),
       ),
     );

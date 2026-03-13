@@ -149,20 +149,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
       'created_at': now.toIso8601String(),
     };
 
+    var savedLocally = true;
     try {
-      // Save check-in data locally in SQLite for MVP persistence.
       await DbService.instance.insertRecord(record);
     } catch (_) {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to save check-in data.')),
-      );
-      return;
+      savedLocally = false;
     }
 
     var syncedToCloud = true;
@@ -178,12 +169,21 @@ class _CheckInScreenState extends State<CheckInScreen> {
       _isSaving = false;
     });
 
+    if (!savedLocally && !syncedToCloud) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save check-in data.')),
+      );
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          syncedToCloud
+          savedLocally && syncedToCloud
               ? 'Check-in saved locally and synced to Firebase.'
-              : 'Check-in saved locally. Firebase sync is pending.',
+              : savedLocally
+              ? 'Check-in saved locally. Firebase sync is pending.'
+              : 'Check-in saved to Firebase (cloud only).',
         ),
       ),
     );
