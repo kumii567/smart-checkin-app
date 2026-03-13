@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:smart_class_checkin/screens/signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,6 +42,31 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(_messageForError(error))));
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      final code = e.code;
+      final msg = e.message ?? '';
+      String friendlyMsg;
+      if (code == 'user-not-found' || msg.contains('user-not-found')) {
+        friendlyMsg = 'Account not found. Please sign up first.';
+      } else if (code == 'wrong-password' || msg.contains('wrong-password')) {
+        friendlyMsg = 'Incorrect password. Please try again.';
+      } else if (code == 'invalid-credential' ||
+          msg.contains('invalid-credential')) {
+        friendlyMsg = 'Invalid credentials. Please try again.';
+      } else if (code == 'network-request-failed' || msg.contains('network')) {
+        friendlyMsg = 'Network issue. Please check your connection.';
+      } else {
+        friendlyMsg = 'Login failed. Please try again.';
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(friendlyMsg)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login failed. Please try again.')),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -317,4 +343,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
