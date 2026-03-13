@@ -1,9 +1,12 @@
-﻿import 'dart:developer' as developer;
-import 'dart:ui';
+﻿import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_class_checkin/screens/home_screen.dart';
+import 'package:smart_class_checkin/services/auth_api_service.dart';
+import 'package:smart_class_checkin/services/auth_session_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -43,6 +46,28 @@ class _SignupScreenState extends State<SignupScreen> {
     final name = _nameController.text.trim();
 
     try {
+      if (kIsWeb) {
+        final result = await AuthApiService.instance.signUp(
+          email: email,
+          password: password,
+        );
+
+        await AuthSessionService.instance.saveSession(
+          email: result.email,
+          displayName: name,
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account created! Welcome!')),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
       final credential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password);
       await credential.user?.updateDisplayName(name);
@@ -51,6 +76,11 @@ class _SignupScreenState extends State<SignupScreen> {
         const SnackBar(content: Text('Account created! Welcome!')),
       );
       Navigator.of(context).pop();
+    } on AuthApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (createError) {
       // Pigeon web bug: creation may have succeeded even though an error is thrown.
       // Try signing in — if create worked, this will succeed.

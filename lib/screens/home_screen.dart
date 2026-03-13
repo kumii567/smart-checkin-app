@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_class_checkin/screens/checkin_screen.dart';
 import 'package:smart_class_checkin/screens/finish_screen.dart';
+import 'package:smart_class_checkin/services/auth_session_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,6 +51,17 @@ class _HomeScreenState extends State<HomeScreen>
       return displayName;
     }
 
+    final session = AuthSessionService.instance.sessionNotifier.value;
+    final localName = session?.displayName?.trim();
+    if (localName != null && localName.isNotEmpty) {
+      return localName;
+    }
+
+    final localEmail = session?.email;
+    if (localEmail != null && localEmail.isNotEmpty) {
+      return localEmail.split('@').first;
+    }
+
     final email = user?.email;
     if (email != null && email.isNotEmpty) {
       return email.split('@').first;
@@ -59,7 +71,10 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+    await AuthSessionService.instance.clearSession();
   }
 
   @override

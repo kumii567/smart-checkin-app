@@ -1,9 +1,13 @@
 ﻿import 'dart:ui';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_class_checkin/screens/home_screen.dart';
 import 'package:smart_class_checkin/screens/signup_screen.dart';
+import 'package:smart_class_checkin/services/auth_api_service.dart';
+import 'package:smart_class_checkin/services/auth_session_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,11 +41,34 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     try {
+      if (kIsWeb) {
+        final result = await AuthApiService.instance.signIn(
+          email: email,
+          password: password,
+        );
+        await AuthSessionService.instance.saveSession(
+          email: result.email,
+          displayName: result.displayName,
+        );
+
+        if (!mounted) return;
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          (_) => false,
+        );
+        return;
+      }
+
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
       // Success — AuthGate will handle navigation
+    } on AuthApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
 

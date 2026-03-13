@@ -2,10 +2,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_class_checkin/firebase_options.dart';
 import 'package:smart_class_checkin/screens/auth_gate.dart';
+import 'package:smart_class_checkin/services/auth_session_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await AuthSessionService.instance.loadSession();
 
   runApp(const SmartClassApp());
 }
