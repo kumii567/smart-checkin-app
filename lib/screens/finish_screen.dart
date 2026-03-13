@@ -58,9 +58,12 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
   Future<void> _captureLocation() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location service is disabled.')),
+        const SnackBar(
+          content: Text('Location service is disabled. Please enable GPS.'),
+        ),
       );
       return;
     }
@@ -72,9 +75,16 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
 
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
+      final opened = await Geolocator.openAppSettings();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location permission denied.')),
+        SnackBar(
+          content: Text(
+            opened
+                ? 'Location permission denied. Enable it in app/site settings.'
+                : 'Location permission denied. Please allow location for this site.',
+          ),
+        ),
       );
       return;
     }
@@ -94,7 +104,18 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
       context,
     ).push<String>(MaterialPageRoute(builder: (_) => const QrScannerScreen()));
 
-    if (!mounted || value == null) {
+    if (!mounted) {
+      return;
+    }
+
+    if (value == null || value.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'QR scan was cancelled or camera permission is blocked.',
+          ),
+        ),
+      );
       return;
     }
 
