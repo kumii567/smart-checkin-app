@@ -11,14 +11,17 @@ Future<void> main() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
+    ).timeout(const Duration(seconds: 12));
   } catch (e) {
-    startupError = 'Failed to initialize Firebase. Please refresh the page.';
+    startupError =
+        'Failed to initialize Firebase. Please refresh or check your network.';
     debugPrint('Firebase init error: $e');
   }
 
   try {
-    await AuthSessionService.instance.loadSession();
+    await AuthSessionService.instance.loadSession().timeout(
+      const Duration(seconds: 4),
+    );
   } catch (e) {
     debugPrint('Session load error: $e');
   }
